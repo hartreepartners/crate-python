@@ -43,9 +43,9 @@ class Cursor(object):
         self.rows = None
         self.execute_stmt = None
         if batch_size == None:
-            self.batch_size = batch_size
-        else:
             self.batch_size = DEFAULT_BATCH_SIZE
+        else:
+            self.batch_size = batch_size
 
     def __really_execute(self, sql, parameters=None, bulk_parameters=None):
         """
@@ -59,7 +59,7 @@ class Cursor(object):
 
         self._result = self.connection.client.sql(sql, parameters,
                                                   bulk_parameters)
-        if "rows" in  self._result:
+        if "rows" in  self._result and len(self._result["rows"]) > 0:
             return  self._result["rows"]
     
     def __execute(self,sql, parameters=None, bulk_parameters=None):
@@ -74,6 +74,7 @@ class Cursor(object):
                 yield rows
     
     def execute(self,sql, parameters=None, bulk_parameters=None):
+        self.__really_execute(sql = sql + " limit 1", parameters=parameters, bulk_parameters=bulk_parameters)
         self.execute_stmt = self.__execute(sql=sql,parameters=parameters,bulk_parameters=bulk_parameters)
 
     def executemany(self, sql, seq_of_parameters):
@@ -115,7 +116,7 @@ class Cursor(object):
         Alias for ``next()``.
         """
         try:
-            return self.next()
+            return next(self.next())
         except StopIteration:
             return None
 
@@ -141,11 +142,11 @@ class Cursor(object):
         if count == 0:
             return self.fetchall()
         result = []
-        for i in range(count):
-            try:
-                result.append(self.next())
-            except StopIteration:
-                pass
+        rgen = self.next()
+        for row in rgen:
+            result.append(row)
+            if len(result) >= count:
+                return result
         return result
 
     def fetchall(self):
@@ -155,12 +156,9 @@ class Cursor(object):
         arraysize attribute can affect the performance of this operation.
         """
         result = []
-        iterate = True
-        while iterate:
-            try:
-                result.append(self.next())
-            except StopIteration:
-                iterate = False
+        rgen = self.next()
+        for row in rgen:
+            result.append(row)
         return result
 
     def close(self):
@@ -198,6 +196,7 @@ class Cursor(object):
         Return the next row of a query result set, respecting if cursor was
         closed.
         """
+        print("calling next")
         for rows in self.execute_stmt:
             for row in rows:
                 if self._closed:
