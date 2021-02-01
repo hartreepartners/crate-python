@@ -1,1 +1,47 @@
-buildPack: python
+buildPack: none
+noReleasePrepare: true
+pipelineConfig:
+  pipelines:
+    release:
+      pipeline:
+        agent:
+          image: "python37-module"
+        stages:
+          - name: Build and publish
+            steps:
+              - command: pip3
+                args:
+                  - install
+                  - --user
+                  - -e
+                  - .
+                name: install-required-package            
+              - command: python3
+                args:
+                  - setup.py
+                  - sdist
+                  - bdist_wheel
+                name: create-package
+              - command: python3
+                args:
+                  - -m
+                  - twine
+                  - upload
+                  - -r
+                  - pypi-internal
+                  - --config-file
+                  - /home/pypirc/.pypirc
+                  - dist/*
+                name: publish-package
+    pullRequest:
+      pipeline:
+        agent:
+          image: "python37-module"
+        stages:
+          - name: Build and Unittest
+            steps:
+              - command: echo
+                args:
+                  - "ignore "
+                  - "unittest"
+                name: unit-test

@@ -44,7 +44,7 @@ else:
     raise RuntimeError('Unable to find version string')
 
 setup(
-    name='crate',
+    name='crate-ht',
     version=version,
     url='https://github.com/crate/crate-python',
     author='Crate.io',
