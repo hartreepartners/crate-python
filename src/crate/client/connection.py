@@ -46,6 +46,7 @@ class Connection(object):
                  socket_tcp_keepidle=None,
                  socket_tcp_keepintvl=None,
                  socket_tcp_keepcnt=None,
+                 batch_size=None,
                  ):
         """
         :param servers:
@@ -99,6 +100,9 @@ class Connection(object):
             Set the ``TCP_KEEPCNT`` socket option, which overrides
             ``net.ipv4.tcp_keepalive_probes`` kernel setting if ``socket_keepalive``
             is ``True``.
+        :param batch_size:
+            (option)
+            set batch size to use while retrieving data from server.
         """
         if client:
             self.client = client
@@ -122,13 +126,14 @@ class Connection(object):
                                  )
         self.lowest_server_version = self._lowest_server_version()
         self._closed = False
+        self.batch_size = batch_size
 
     def cursor(self):
         """
         Return a new Cursor Object using the connection.
         """
         if not self._closed:
-            return Cursor(self)
+            return Cursor(self, self.batch_size)
         else:
             raise ProgrammingError("Connection closed")
 

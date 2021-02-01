@@ -25,6 +25,8 @@ import warnings
 
 BULK_INSERT_MIN_VERSION = StrictVersion("0.42.0")
 
+OFFSET_LIMIT_STRING = " limit {limit} offset {offset}"
+DEFAULT_BATCH_SIZE = 10000
 
 class Cursor(object):
     """
@@ -33,14 +35,19 @@ class Cursor(object):
     """
     lastrowid = None  # currently not supported
 
-    def __init__(self, connection):
+    def __init__(self, connection, batch_size=None):
         self.arraysize = 1
         self.connection = connection
         self._closed = False
         self._result = None
         self.rows = None
+        self.execute_stmt = None
+        if batch_size == None:
+            self.batch_size = batch_size
+        else:
+            self.batch_size = DEFAULT_BATCH_SIZE
 
-    def execute(self, sql, parameters=None, bulk_parameters=None):
+    def __really_execute(self, sql, parameters=None, bulk_parameters=None):
         """
         Prepare and execute a database operation (query or command).
         """
@@ -52,8 +59,22 @@ class Cursor(object):
 
         self._result = self.connection.client.sql(sql, parameters,
                                                   bulk_parameters)
-        if "rows" in self._result:
-            self.rows = iter(self._result["rows"])
+        if "rows" in  self._result:
+            return  self._result["rows"]
+    
+    def __execute(self,sql, parameters=None, bulk_parameters=None):
+        offset = 0
+        while True:
+            batched_sql = sql + OFFSET_LIMIT_STRING.format(limit=self.batch_size, offset=offset)
+            rows = self.__really_execute(sql=batched_sql, parameters=parameters, bulk_parameters=bulk_parameters)
+            if rows == None:
+                break
+            else:
+                offset += len(rows) 
+                yield rows
+    
+    def execute(self,sql, parameters=None, bulk_parameters=None):
+        self.execute_stmt = self.__execute(sql=sql,parameters=parameters,bulk_parameters=bulk_parameters)
 
     def executemany(self, sql, seq_of_parameters):
         """
@@ -177,15 +198,11 @@ class Cursor(object):
         Return the next row of a query result set, respecting if cursor was
         closed.
         """
-        if self.rows is None:
-            raise ProgrammingError(
-                "No result available. " +
-                "execute() or executemany() must be called first."
-            )
-        elif not self._closed:
-            return next(self.rows)
-        else:
-            raise ProgrammingError("Cursor closed")
+        for rows in self.execute_stmt:
+            for row in rows:
+                if self._closed:
+                    raise ProgrammingError("Cursor closed")
+                yield row
 
     __next__ = next
 
@@ -219,3 +236,4 @@ class Cursor(object):
                 "duration" not in self._result:
             return -1
         return self._result.get("duration", 0)
+
