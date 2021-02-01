@@ -42,6 +42,7 @@ class Cursor(object):
         self._result = None
         self.rows = None
         self.execute_stmt = None
+        self.next_gen = None
         if batch_size == None:
             self.batch_size = DEFAULT_BATCH_SIZE
         else:
@@ -76,6 +77,7 @@ class Cursor(object):
     def execute(self,sql, parameters=None, bulk_parameters=None):
         self.__really_execute(sql = sql + " limit 1", parameters=parameters, bulk_parameters=bulk_parameters)
         self.execute_stmt = self.__execute(sql=sql,parameters=parameters,bulk_parameters=bulk_parameters)
+        self.next_gen = self.next()
 
     def executemany(self, sql, seq_of_parameters):
         """
@@ -116,7 +118,7 @@ class Cursor(object):
         Alias for ``next()``.
         """
         try:
-            return next(self.next())
+            return next(self.next_gen)
         except StopIteration:
             return None
 
@@ -142,8 +144,7 @@ class Cursor(object):
         if count == 0:
             return self.fetchall()
         result = []
-        rgen = self.next()
-        for row in rgen:
+        for row in self.next_gen:
             result.append(row)
             if len(result) >= count:
                 return result
@@ -156,8 +157,7 @@ class Cursor(object):
         arraysize attribute can affect the performance of this operation.
         """
         result = []
-        rgen = self.next()
-        for row in rgen:
+        for row in self.next_gen:
             result.append(row)
         return result
 
@@ -196,7 +196,6 @@ class Cursor(object):
         Return the next row of a query result set, respecting if cursor was
         closed.
         """
-        print("calling next")
         for rows in self.execute_stmt:
             for row in rows:
                 if self._closed:
