@@ -75,12 +75,21 @@ class Cursor(object):
                 yield rows
     
     def execute(self,sql, parameters=None, bulk_parameters=None):
-        if sql.strip()[:6].lower() == 'select': 
-            self.__really_execute(sql = sql + " limit 1", parameters=parameters, bulk_parameters=bulk_parameters)
-            self.execute_stmt = self.__execute(sql=sql,parameters=parameters,bulk_parameters=bulk_parameters)
-            self.next_gen = self.next()
-        else:
-            self.__really_execute(sql = sql, parameters=parameters, bulk_parameters=bulk_parameters)
+        formatted_sql = sql.strip().lower()
+        if formatted_sql[:6] == 'select' and formatted_sql.find('limit') == -1:
+            if formatted_sql.endswith(';'):
+                formatted_sql = formatted_sql[:-1]
+            try:
+                self.__really_execute(sql = formatted_sql + " limit 1", parameters=parameters, bulk_parameters=bulk_parameters)
+                self.execute_stmt = self.__execute(sql=formatted_sql,parameters=parameters,bulk_parameters=bulk_parameters)
+                self.next_gen = self.next()
+                return
+            except ProgrammingError:
+                pass
+        rows = self.__really_execute(sql = sql, parameters=parameters, bulk_parameters=bulk_parameters)
+        if rows:
+            self.next_gen = rows
+
 
     def executemany(self, sql, seq_of_parameters):
         """
