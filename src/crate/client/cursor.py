@@ -60,8 +60,8 @@ class Cursor(object):
 
         self._result = self.connection.client.sql(sql, parameters,
                                                   bulk_parameters)
-        if "rows" in  self._result and len(self._result["rows"]) > 0:
-            return  self._result["rows"]
+        if "rows" in self._result and len(self._result["rows"]) > 0:
+            return self._result["rows"]
     
     def __execute(self,sql, parameters=None, bulk_parameters=None):
         offset = 0
@@ -75,9 +75,10 @@ class Cursor(object):
                 yield rows
     
     def execute(self,sql, parameters=None, bulk_parameters=None):
-        formatted_sql = sql.strip().lower()
-        if formatted_sql[:6] == 'select' and formatted_sql.find('limit') == -1:
-            if formatted_sql.endswith(';'):
+        formatted_sql = sql.strip()
+        formatted_lower_sql = formatted_sql.lower()
+        if formatted_lower_sql[:6] == "select" and formatted_lower_sql.find("limit") == -1:
+            if formatted_sql.endswith(";"):
                 formatted_sql = formatted_sql[:-1]
             try:
                 self.__really_execute(sql = formatted_sql + " limit 1", parameters=parameters, bulk_parameters=bulk_parameters)
