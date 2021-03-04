@@ -90,6 +90,8 @@ class Cursor(object):
         rows = self.__really_execute(sql = sql, parameters=parameters, bulk_parameters=bulk_parameters)
         if rows:
             self.next_gen = rows
+        else:
+            self.next_gen = []
 
 
     def executemany(self, sql, seq_of_parameters):
